@@ -21,18 +21,15 @@ def RungeKutta45(
     y[0] = y_init
     z = 0
 
-    
-    alpha = 1
-
     n  =  0
     k1  =  f(x_init,y_init)
 
     while x_end-x[n]>0:
-        print(n)
+       
 
         # Gjør arrayet større i tilfellet at gjetningen på størreslen var for liten
         if len(x)==n+1:
-            print("Yes")
+            
             sizeInc=int(np.ceil((x_end-x[n])/h))
             x=np.concatenate((x,np.zeros(sizeInc)))
             y=np.concatenate((y,np.zeros((sizeInc,len(y_init)))))
@@ -55,8 +52,8 @@ def RungeKutta45(
     x =  np.trim_zeros(x,trim="b")
     y = np.trim_zeros(y,trim="b")
 
-    
-    return x, y
+
+    return x, y, n
     
     
 def diff_func_1a(
@@ -76,9 +73,34 @@ x_end = 2*np.pi
 y_init = np.array([0,2])
 h0 = 0.1
 
-x , y = RungeKutta45(x_init,x_end,y_init,diff_func_1a,h0,tol= 1e-7, alpha=0.8)
+x , y , n= RungeKutta45(x_init,x_end,y_init,diff_func_1a,h0,tol= 1e-7, alpha=0.8)
 
 
-plt.figure("Oppgave 3c")
+plt.figure("Oppgave 1c")
 plt.plot(x,y[:,0])
+
+
+
+
+#### oppgave 1d
+
+def anal_solution(x):
+    return np.sin(2*x)
+
+tols= np.logspace(-1,-7,100)
+alphas= np.linspace(0.1,1.9,100)
+error= np.zeros_like(tols)
+
+print(1e2,tols)
+
+for i in range(100):
+    x , y , n= RungeKutta45(x_init,x_end,y_init,diff_func_1a,h0,tol = tols[i], alpha=0.8)
+    
+    error[i] = np.linalg.norm(y[:,0]-anal_solution(x))
+    
+
+plt.figure("oppgave 1d")
+plt.plot(tols,error)
+plt.xscale("log")
+plt.yscale("log")
 plt.show()
