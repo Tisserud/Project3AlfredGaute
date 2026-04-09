@@ -1,6 +1,7 @@
 # %% {"tags" : ["imports"]}
 import numpy as np
 from numpy.linalg import inv
+from scipy.integrate import solve_bvp
 
 # %% [markdown] 
 """
@@ -109,6 +110,8 @@ $$
     Re(\omega_{11}) Re(\omega_{12}) Re(\omega_{21}) Re(\omega_{22}) Im(\omega_{11}) Im(\omega_{12}) Im(\omega_{21})  Im (\omega_{22}) \\ 
     Re(\omega_{11}) Re(\omega_{12}) Re(\omega_{21}) Re(\omega_{22}) Im(\omega_{11}) Im(\omega_{12}) Im(\omega_{21})  Im (\omega_{22}) \\
 $$
+
+### 2d
 """
 # %% [code]
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
@@ -122,3 +125,11 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 
     return oppg2c(omega, omegaTilde, omegaDeriv, omegaTildeDeriv)
 
+
+# %% [markdown]
+"""### 2e
+"""
+
+# %% [code]
+def oppg2e(x : np.ndarray, vec : np.ndarray, epsilon : float):
+    return np.apply_along_axis(deriv, 1, vec, epsilon=epsilon)
