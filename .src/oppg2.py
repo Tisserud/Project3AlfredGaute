@@ -1,6 +1,6 @@
 # %% {"tags" : ["imports"]}
 import numpy as np
-
+from numpy.linalg import inv
 
 # %% [markdown] 
 """
@@ -85,7 +85,12 @@ def oppg2c(
         
 def oppg2cInverse(
     vec : np.ndarray[np.float64]
-    ) -> tuple[np.ndarray[np.ndarray[np.complex128]]]:
+    ) -> tuple[
+        np.ndarray[np.ndarray[np.complex128]],
+        np.ndarray[np.ndarray[np.complex128]],
+        np.ndarray[np.ndarray[np.complex128]],
+        np.ndarray[np.ndarray[np.complex128]]
+    ]:
 
     m1, m2, m3, m4 = toComponentVectors(vec)
     gamma = toComplexMatrix(m1)
@@ -105,4 +110,15 @@ $$
     Re(\omega_{11}) Re(\omega_{12}) Re(\omega_{21}) Re(\omega_{22}) Im(\omega_{11}) Im(\omega_{12}) Im(\omega_{21})  Im (\omega_{22}) \\
 $$
 """
-# %%
+# %% [code]
+def deriv(vec : np.ndarray[np.float64], epsilon : float):
+    gamma, gammaTilde, omega, omegaTilde = oppg2cInverse(vec)
+
+    N = inv(1 - gamma @ gammaTilde)
+    N_tilde = inv(1 - gammaTilde @ gamma)
+    
+    omegaDeriv = -2j * (epsilon + 0.01j) - 2 * omega @ N_tilde @ gammaTilde @ omega
+    omegaTildeDeriv = -2j * (epsilon + 0.01j) - 2 * omegaTilde @ N @ gamma @ omegaTilde
+
+    return oppg2c(omega, omegaTilde, omegaDeriv, omegaTildeDeriv)
+
