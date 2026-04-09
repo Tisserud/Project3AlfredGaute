@@ -4,6 +4,7 @@ from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 
 l = 1
+epsilon = 1
 # %% [markdown] 
 """
 ## Oppgave 2
@@ -132,12 +133,15 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 """
 
 # %% [code]
-def stepFunc(x : np.ndarray, vec : np.ndarray, epsilon : float):
-    return np.apply_along_axis(deriv, 1, vec, epsilon=epsilon)
+def stepFunc(x : np.ndarray, vec : np.ndarray):
+    return np.apply_along_axis(deriv, 1, vec, epsilon)
 
 # %% [markdown]
-"""### 2f"""
+"""
+### 2f
+"""
 
+# %% [code]
 def bc(
     v_left : np.ndarray,
     v_right : np.ndarray,
@@ -151,3 +155,13 @@ def bc(
         omegaTilde_left - 1/(3*l) * gammaTilde_left,
         omega_right + 1/(3*l) * gamma_right,
         omegaTilde_right + 1/(3*l) * gammaTilde_right)
+# %%
+l = 1
+m = 101
+x = np.linspace(0,l,m)
+y = np.zeros((32,m))
+for i in range(3):
+    epsilon = i
+    sol = solve_bvp(stepFunc, bc, x, y, verbose = 2)
+    print(sol)
+# %%
