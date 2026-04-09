@@ -3,6 +3,7 @@ import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 
+l = 1
 # %% [markdown] 
 """
 ## Oppgave 2
@@ -106,9 +107,9 @@ def oppg2cInverse(
 $$
 \vec{v} = \\
     Re(\gamma_{11}) Re(\gamma_{12}) Re(\gamma_{21}) Re(\gamma_{22}) Im(\gamma_{11}) Im(\gamma_{12}) Im(\gamma_{21})  Im (\gamma_{22}) \\
-    Re(\gamma_{11}) Re(\gamma_{12}) Re(\gamma_{21}) Re(\gamma_{22}) Im(\gamma_{11}) Im(\gamma_{12}) Im(\gamma_{21})  Im (\gamma_{22}) \\
+    Re(\tilde\gamma_{11}) Re(\tilde\gamma_{12}) Re(\tilde\gamma_{21}) Re(\tilde\gamma_{22}) Im(\tilde\gamma_{11}) Im(\tilde\gamma_{12}) Im(\tilde\gamma_{21})  Im (\tilde\gamma_{22}) \\
     Re(\omega_{11}) Re(\omega_{12}) Re(\omega_{21}) Re(\omega_{22}) Im(\omega_{11}) Im(\omega_{12}) Im(\omega_{21})  Im (\omega_{22}) \\ 
-    Re(\omega_{11}) Re(\omega_{12}) Re(\omega_{21}) Re(\omega_{22}) Im(\omega_{11}) Im(\omega_{12}) Im(\omega_{21})  Im (\omega_{22}) \\
+    Re(\tilde\omega_{11}) Re(\tilde\omega_{12}) Re(\tilde\omega_{21}) Re(\tilde\omega_{22}) Im(\tilde\omega_{11}) Im(\tilde\omega_{12}) Im(\tilde\omega_{21})  Im (\tilde\omega_{22}) \\
 $$
 
 ### 2d
@@ -131,5 +132,22 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 """
 
 # %% [code]
-def oppg2e(x : np.ndarray, vec : np.ndarray, epsilon : float):
+def stepFunc(x : np.ndarray, vec : np.ndarray, epsilon : float):
     return np.apply_along_axis(deriv, 1, vec, epsilon=epsilon)
+
+# %% [markdown]
+"""### 2f"""
+
+def bc(
+    v_left : np.ndarray,
+    v_right : np.ndarray,
+    ):
+
+    gamma_left, gammaTilde_left, omega_left, omegaTilde_left = oppg2cInverse(v_left)
+    gamma_right, gammaTilde_right, omega_right, omegaTilde_right = oppg2cInverse(v_right)
+
+    return oppg2c(
+        omega_left - 1/(3*l) * gamma_left,
+        omegaTilde_left - 1/(3*l) * gammaTilde_left,
+        omega_right + 1/(3*l) * gamma_right,
+        omegaTilde_right + 1/(3*l) * gammaTilde_right)
