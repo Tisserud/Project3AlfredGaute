@@ -158,7 +158,7 @@ def bc(
 # %%
 l = 1
 m = 101
-x = np.linspace(0,l,m)z
+x = np.linspace(0,l,m)
 y = np.zeros((32,m))
 for i in range(3):
     epsilon = i
