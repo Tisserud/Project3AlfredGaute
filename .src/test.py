@@ -87,20 +87,31 @@ plt.plot(x,y[:,0])
 def anal_solution(x):
     return np.sin(2*x)
 
-tols= np.logspace(-1,-7,100)
-alphas= np.linspace(0.1,1.9,100)
+tols= np.logspace(1,-8,100)
+alphas= np.linspace(0.1,1,100)
 error= np.zeros_like(tols)
 
-print(1e2,tols)
 
-for i in range(100):
+for i in range(len(tols)):
     x , y , n= RungeKutta45(x_init,x_end,y_init,diff_func_1a,h0,tol = tols[i], alpha=0.8)
     
     error[i] = np.linalg.norm(y[:,0]-anal_solution(x))
     
+Iterations = np.zeros_like(alphas)
+for i in range(len(alphas)):
+    x , y , n= RungeKutta45(x_init,x_end,y_init,diff_func_1a,h0, alpha=alphas[i])
+    print(alphas[i],n)
+    Iterations[i] = n
+    
+    
+    
 
-plt.figure("oppgave 1d")
+plt.figure("Error/tols")
 plt.plot(tols,error)
 plt.xscale("log")
 plt.yscale("log")
+
+plt.figure("Iterations/alphas")
+plt.plot(alphas, Iterations)
+
 plt.show()
