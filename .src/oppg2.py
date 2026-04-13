@@ -119,8 +119,8 @@ $$
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
     gamma, gammaTilde, omega, omegaTilde = oppg2cInverse(vec)
 
-    N = inv(1 - gamma @ gammaTilde)
-    N_tilde = inv(1 - gammaTilde @ gamma)
+    N = inv(np.identity(2) - gamma @ gammaTilde)
+    N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
     
     omegaDeriv = -2j * (epsilon + 0.01j) - 2 * omega @ N_tilde @ gammaTilde @ omega
     omegaTildeDeriv = -2j * (epsilon + 0.01j) - 2 * omegaTilde @ N @ gamma @ omegaTilde
@@ -134,7 +134,7 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 
 # %% [code]
 def stepFunc(x : np.ndarray, vec : np.ndarray):
-    return np.apply_along_axis(deriv, 1, vec, epsilon)
+    return np.apply_along_axis(deriv, 0, vec, epsilon)
 
 # %% [markdown]
 """
@@ -158,7 +158,7 @@ def bc(
 # %%
 l = 1
 m = 101
-x = np.linspace(0,l,m)
+x = np.linspace(0,l,m)z
 y = np.zeros((32,m))
 for i in range(3):
     epsilon = i
