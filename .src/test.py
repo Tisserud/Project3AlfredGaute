@@ -1,18 +1,15 @@
-from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.typing import ArrayLike
-
 
 def RungeKutta45(
         x_init : float,
         x_end : float,
-        y_init : ArrayLike,
+        y_init : np.ndarray[np.float64],
         f,
-        h0 : float,
-        tol : float = 0.01,
-        alpha : float = 1
-                 ) -> Tuple:
+        h0 : float =0.1,
+        tol : float = 0.001,
+        alpha : float = 0.8
+                 ) -> tuple:
     
     x  =  np.zeros(int(np.ceil((x_end-x_init)/h0)))
     y  =  np.zeros((int(np.ceil((x_end-x_init)/h0)),len(y_init)))
@@ -58,8 +55,8 @@ def RungeKutta45(
     
 def diff_func_1a(
         x : float,
-        y : ArrayLike
-    )  -> ArrayLike:
+        y : np.ndarray[np.float64]
+    )  -> np.ndarray[np.float64]:
 
     out=np.zeros_like(y)
 
@@ -114,4 +111,3 @@ plt.yscale("log")
 plt.figure("Iterations/alphas")
 plt.plot(alphas, Iterations)
 
-plt.show()
