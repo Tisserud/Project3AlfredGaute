@@ -3,9 +3,6 @@ import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 import matplotlib.pyplot as plt
-
-l = 1
-epsilon = 1
 # %% [markdown] 
 """
 ## Oppgave 2
@@ -134,40 +131,50 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 """
 
 # %% [code]
-def stepFunc(x : np.ndarray, vec : np.ndarray):
-    return np.apply_along_axis(deriv, 0, vec, epsilon)
-
+def get_fun(epsilon : float) -> callable:
+    def fun(x : np.ndarray, vec : np.ndarray):
+        return np.apply_along_axis(deriv, 0, vec, epsilon)
+    return fun
 # %% [markdown]
 """
 ### 2f
 """
 
 # %% [code]
-def bc(
-    v_left : np.ndarray,
-    v_right : np.ndarray,
-    ):
+def get_bc(l : float) -> callable:
+    def bc(
+        v_left : np.ndarray,
+        v_right : np.ndarray,
+        ):
 
-    gamma_left, gammaTilde_left, omega_left, omegaTilde_left = to_2D_matrices(v_left)
-    gamma_right, gammaTilde_right, omega_right, omegaTilde_right = to_2D_matrices(v_right)
+        gamma_left, gammaTilde_left, omega_left, omegaTilde_left = to_2D_matrices(v_left)
+        gamma_right, gammaTilde_right, omega_right, omegaTilde_right = to_2D_matrices(v_right)
 
-    return to_32_component_vector(
-        omega_left - 1/(3*l) * gamma_left,
-        omegaTilde_left - 1/(3*l) * gammaTilde_left,
-        omega_right + 1/(3*l) * gamma_right,
-        omegaTilde_right + 1/(3*l) * gammaTilde_right)
+        return to_32_component_vector(
+            omega_left - 1/(3*l) * gamma_left,
+            omegaTilde_left - 1/(3*l) * gammaTilde_left,
+            omega_right + 1/(3*l) * gamma_right,
+            omegaTilde_right + 1/(3*l) * gammaTilde_right)
+    return bc
 # %% [markdown]
 """
 ### 2g
 """
+
+# %%
 l = 1
 m = 101
 x = np.linspace(0,l,m)
 y = np.zeros((32,m))
 for i in range(3):
     epsilon = i
-    res = solve_bvp(stepFunc, bc, x, y, verbose = 2)
+    res = solve_bvp(get_fun(), bc, x, y, verbose = 2)
     print(res)
+
+# %% [markdown]
+"""
+### 2h
+"""
 # %%
 def normDensity(x, res):
     gamma, gammaTilde, _, _ = to_2D_matrices(res.sol(x))
@@ -175,4 +182,7 @@ def normDensity(x, res):
     N = inv(np.identity(2) - gamma @ gammaTilde)
     N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
 
-    return (np.trace(N) + np.trace(N_tilde))/2 - 1
+    return (np.trace(N) + np.trace(N_tilde)).real/2 - 1
+
+
+# %%
