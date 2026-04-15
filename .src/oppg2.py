@@ -192,7 +192,7 @@ for eps in range(3):
 plt.xlabel('x')
 plt.ylabel('d')
 plt.grid()
-plt.title("Normalized density of states")
+plt.title("Normal metals, energy density")
 plt.legend()
 plt.show()
 # %% [markdown]
@@ -201,27 +201,27 @@ plt.show()
 """
 # %%
 
-def get_ricatti(l, epsilon, phi_L, phi_R):
-    def theta(sigma, epsilon):
-        return np.atanh(sigma/(epsilon + 0.01j))
-    
-    def s(sigma, epsilon):
-        return np.sinh(theta(sigma, epsilon))
-    
-    def c(sigma, epsilon):
-        return np.cosh(sigma, epsilon)
-    
-    s_minus_c_minus = s(-1, epsilon)/(1 + c(-1, epsilon))
-    s_plus_c_plus = s(1, epsilon)/(1 + c(1, epsilon))
-
-    gamma_L = np.asarray([0, s_plus_c_plus], [s_minus_c_minus, 0]) * np.exp(1j * phi_L)
-    gamma_L_tilde = np.asarray([0, s_minus_c_minus], [s_plus_c_plus, 0]) * np.exp(-1j * phi_L)
-    gamma_R = np.asarray([0, s_plus_c_plus], [s_minus_c_minus, 0]) * np.exp(1j * phi_L)
-    gamma_R_tilde = np.asarray([0, s_minus_c_minus], [s_plus_c_plus, 0]) * np.exp(-1j * phi_L)
-
-    return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
-
 def get_bc_superconductor(l, epsilon, phi_L, phi_R):
+    def get_ricatti(l, epsilon, phi_L, phi_R):
+        def theta(sigma, epsilon):
+            return np.atanh(sigma/(epsilon + 0.01j))
+        
+        def s(sigma, epsilon):
+            return np.sinh(theta(sigma, epsilon))
+        
+        def c(sigma, epsilon):
+            return np.cosh(theta(sigma, epsilon))
+        
+        s_minus_c_minus = s(-1, epsilon)/(1 + c(-1, epsilon))
+        s_plus_c_plus = s(1, epsilon)/(1 + c(1, epsilon))
+
+        gamma_L = np.asarray(([0, s_plus_c_plus], [s_minus_c_minus, 0])) * np.exp(1j * phi_L)
+        gamma_L_tilde = np.asarray(([0, s_minus_c_minus], [s_plus_c_plus, 0])) * np.exp(-1j * phi_L)
+        gamma_R = np.asarray(([0, s_plus_c_plus], [s_minus_c_minus, 0])) * np.exp(1j * phi_R)
+        gamma_R_tilde = np.asarray(([0, s_minus_c_minus], [s_plus_c_plus, 0])) * np.exp(-1j * phi_R)
+
+        return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
+
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
 
     def bc(
@@ -232,9 +232,34 @@ def get_bc_superconductor(l, epsilon, phi_L, phi_R):
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
 
+        N_L = inv(np.identity(2) - gamma_L @ gamma_L_tilde)
+        N_L_tilde = inv(np.identity(2) - gamma_L_tilde @ gamma_L)
+        N_R = inv(np.identity(2) - gamma_R @ gamma_R_tilde)
+        N_R_tilde = inv(np.identity(2) - gamma_R_tilde @ gamma_R)
+
         return to_32_component_vector(
-            omega_left - 1/(3*l) * gamma_left,
-            omega_left_tilde - 1/(3*l) * gamma_left_tilde,
-            omega_right + 1/(3*l) * gamma_right,
-            omega_right_tilde + 1/(3*l) * gamma_right_tilde)
+            omega_left + 1/(3*l) * (np.identity(2) - gamma_left @ gamma_L_tilde) @ N_L @ (gamma_L - gamma_left),
+            omega_left_tilde + 1/(3*l) * (np.identity(2) - gamma_left_tilde @ gamma_L) @ N_L_tilde @ (gamma_L_tilde - gamma_left_tilde),
+            omega_right - 1/(3*l) * (np.identity(2) - gamma_right @ gamma_R_tilde) @ N_R @ (gamma_R - gamma_right),
+            omega_right_tilde - 1/(3*l) * (np.identity(2) - gamma_right_tilde @ gamma_R) @ N_R_tilde @ (gamma_R_tilde - gamma_right_tilde)
+            )
+    
     return bc
+
+# %%
+l = 1
+m = 101
+x = np.linspace(0,l,m)
+y = np.zeros((32,m))
+epsilon = 2
+phi_L = phi_R = 0
+res= solve_bvp(get_fun(epsilon), get_bc_superconductor(l, epsilon, phi_L, phi_R), x, y, verbose = 2)
+
+density = np.apply_along_axis(normDensity, 0, res.sol(x))
+plt.plot(x, density, label = f'epsilon = {epsilon}')
+plt.xlabel('x')
+plt.ylabel('d')
+plt.grid()
+plt.title("Superconductor, energy density")
+plt.legend()
+plt.show()
