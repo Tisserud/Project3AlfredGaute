@@ -166,23 +166,33 @@ l = 1
 m = 101
 x = np.linspace(0,l,m)
 y = np.zeros((32,m))
-for i in range(3):
-    epsilon = i
-    res = solve_bvp(get_fun(), bc, x, y, verbose = 2)
-    print(res)
+
+results = dict()
+for eps in range(3):
+    results[eps] = solve_bvp(get_fun(eps), get_bc(l), x, y, verbose = 2)
+    print(not results[eps].sol(x).any())
 
 # %% [markdown]
 """
 ### 2h
 """
 # %%
-def normDensity(x, res):
-    gamma, gammaTilde, _, _ = to_2D_matrices(res.sol(x))
+def normDensity(vec):
+    gamma, gammaTilde, _, _ = to_2D_matrices(vec)
 
     N = inv(np.identity(2) - gamma @ gammaTilde)
     N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
 
     return (np.trace(N) + np.trace(N_tilde)).real/2 - 1
 
+for eps in range(3):
+    density = np.apply_along_axis(normDensity, 0, results[eps].sol(x))
+    plt.plot(x, density, label = f'epsilon = {eps}')
 
+plt.xlabel('x')
+plt.ylabel('d')
+plt.grid()
+plt.title("Normalized density of states")
+plt.legend()
+plt.show()
 # %%
