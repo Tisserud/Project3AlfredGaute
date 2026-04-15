@@ -141,20 +141,20 @@ def get_fun(epsilon : float) -> callable:
 """
 
 # %% [code]
-def get_bc(l : float) -> callable:
+def get_bc_normal_metal(l : float) -> callable:
     def bc(
         v_left : np.ndarray,
         v_right : np.ndarray,
         ):
 
-        gamma_left, gammaTilde_left, omega_left, omegaTilde_left = to_2D_matrices(v_left)
-        gamma_right, gammaTilde_right, omega_right, omegaTilde_right = to_2D_matrices(v_right)
+        gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
+        gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
 
         return to_32_component_vector(
             omega_left - 1/(3*l) * gamma_left,
-            omegaTilde_left - 1/(3*l) * gammaTilde_left,
+            omega_left_tilde - 1/(3*l) * gamma_left_tilde,
             omega_right + 1/(3*l) * gamma_right,
-            omegaTilde_right + 1/(3*l) * gammaTilde_right)
+            omega_right_tilde + 1/(3*l) * gamma_right_tilde)
     return bc
 # %% [markdown]
 """
@@ -169,7 +169,7 @@ y = np.zeros((32,m))
 
 results = dict()
 for eps in range(3):
-    results[eps] = solve_bvp(get_fun(eps), get_bc(l), x, y, verbose = 2)
+    results[eps] = solve_bvp(get_fun(eps), get_bc_normal_metal(l), x, y, verbose = 2)
     print(not results[eps].sol(x).any())
 
 # %% [markdown]
@@ -195,4 +195,46 @@ plt.grid()
 plt.title("Normalized density of states")
 plt.legend()
 plt.show()
+# %% [markdown]
+"""
+### 2i
+"""
 # %%
+
+def get_ricatti(l, epsilon, phi_L, phi_R):
+    def theta(sigma, epsilon):
+        return np.atanh(sigma/(epsilon + 0.01j))
+    
+    def s(sigma, epsilon):
+        return np.sinh(theta(sigma, epsilon))
+    
+    def c(sigma, epsilon):
+        return np.cosh(sigma, epsilon)
+    
+    s_minus_c_minus = s(-1, epsilon)/(1 + c(-1, epsilon))
+    s_plus_c_plus = s(1, epsilon)/(1 + c(1, epsilon))
+
+    gamma_L = np.asarray([0, s_plus_c_plus], [s_minus_c_minus, 0]) * np.exp(1j * phi_L)
+    gamma_L_tilde = np.asarray([0, s_minus_c_minus], [s_plus_c_plus, 0]) * np.exp(-1j * phi_L)
+    gamma_R = np.asarray([0, s_plus_c_plus], [s_minus_c_minus, 0]) * np.exp(1j * phi_L)
+    gamma_R_tilde = np.asarray([0, s_minus_c_minus], [s_plus_c_plus, 0]) * np.exp(-1j * phi_L)
+
+    return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
+
+def get_bc_superconductor(l, epsilon, phi_L, phi_R):
+    gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
+
+    def bc(
+        v_left : np.ndarray,
+        v_right : np.ndarray,
+        ):
+
+        gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
+        gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
+
+        return to_32_component_vector(
+            omega_left - 1/(3*l) * gamma_left,
+            omega_left_tilde - 1/(3*l) * gamma_left_tilde,
+            omega_right + 1/(3*l) * gamma_right,
+            omega_right_tilde + 1/(3*l) * gamma_right_tilde)
+    return bc
