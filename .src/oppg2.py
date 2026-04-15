@@ -2,6 +2,7 @@
 import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
+import matplotlib.pyplot as plt
 
 l = 1
 epsilon = 1
@@ -73,7 +74,7 @@ print(b)
 """
 
 # %% [code]
-def oppg2c(
+def to_32_component_vector(
     gamma : np.ndarray[np.ndarray[np.complex128]],
     gammaTilde : np.ndarray[np.ndarray[np.complex128]],
     omega : np.ndarray[np.ndarray[np.complex128]],
@@ -86,7 +87,7 @@ def oppg2c(
         toRealVector(omega),
         toRealVector(omegaTilde))
         
-def oppg2cInverse(
+def to_2D_matrices(
     vec : np.ndarray[np.float64]
     ) -> tuple[
         np.ndarray[np.ndarray[np.complex128]],
@@ -117,15 +118,15 @@ $$
 """
 # %% [code]
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
-    gamma, gammaTilde, omega, omegaTilde = oppg2cInverse(vec)
+    gamma, gammaTilde, omega, omegaTilde = to_2D_matrices(vec)
 
     N = inv(np.identity(2) - gamma @ gammaTilde)
     N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
     
-    omegaDeriv = -2j * (epsilon + 0.01j) - 2 * omega @ N_tilde @ gammaTilde @ omega
-    omegaTildeDeriv = -2j * (epsilon + 0.01j) - 2 * omegaTilde @ N @ gamma @ omegaTilde
+    omegaDeriv = -2j * (epsilon + 0.01j)*gamma - 2 * omega @ N_tilde @ gammaTilde @ omega
+    omegaTildeDeriv = -2j * (epsilon + 0.01j)*gammaTilde- 2 * omegaTilde @ N @ gamma @ omegaTilde
 
-    return oppg2c(omega, omegaTilde, omegaDeriv, omegaTildeDeriv)
+    return to_32_component_vector(omega, omegaTilde, omegaDeriv, omegaTildeDeriv)
 
 
 # %% [markdown]
@@ -147,21 +148,31 @@ def bc(
     v_right : np.ndarray,
     ):
 
-    gamma_left, gammaTilde_left, omega_left, omegaTilde_left = oppg2cInverse(v_left)
-    gamma_right, gammaTilde_right, omega_right, omegaTilde_right = oppg2cInverse(v_right)
+    gamma_left, gammaTilde_left, omega_left, omegaTilde_left = to_2D_matrices(v_left)
+    gamma_right, gammaTilde_right, omega_right, omegaTilde_right = to_2D_matrices(v_right)
 
-    return oppg2c(
+    return to_32_component_vector(
         omega_left - 1/(3*l) * gamma_left,
         omegaTilde_left - 1/(3*l) * gammaTilde_left,
         omega_right + 1/(3*l) * gamma_right,
         omegaTilde_right + 1/(3*l) * gammaTilde_right)
-# %%
+# %% [markdown]
+"""
+### 2g
+"""
 l = 1
 m = 101
 x = np.linspace(0,l,m)
 y = np.zeros((32,m))
 for i in range(3):
     epsilon = i
-    sol = solve_bvp(stepFunc, bc, x, y, verbose = 2)
-    print(sol)
+    res = solve_bvp(stepFunc, bc, x, y, verbose = 2)
+    print(res)
 # %%
+def normDensity(x, res):
+    gamma, gammaTilde, _, _ = to_2D_matrices(res.sol(x))
+
+    N = inv(np.identity(2) - gamma @ gammaTilde)
+    N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
+
+    return (np.trace(N) + np.trace(N_tilde))/2 - 1
