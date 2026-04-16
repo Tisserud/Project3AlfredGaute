@@ -74,12 +74,12 @@ def to_32_component_vector(
         toRealVector(omegaTilde))
         
 def to_2D_matrices(
-    vec : np.ndarray[np.float64]
+    vec : np.ndarray[tuple[int], np.dtype[np.float64]]
     ) -> tuple[
-        np.ndarray[np.ndarray[np.complex128]],
-        np.ndarray[np.ndarray[np.complex128]],
-        np.ndarray[np.ndarray[np.complex128]],
-        np.ndarray[np.ndarray[np.complex128]]
+        np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+        np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+        np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+        np.ndarray[tuple[int, int], np.dtype[np.complex128]]
     ]:
 
     m1, m2, m3, m4 = toComponentVectors(vec)
@@ -98,6 +98,7 @@ $$
 ### 2d
 """
 # %% [code]
+
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
     gamma, gammaTilde, omega, omegaTilde = to_2D_matrices(vec)
 
@@ -204,6 +205,7 @@ def get_ricatti(l, epsilon, phi_L, phi_R):
 
         return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
 
+
 def get_bc_superconductor(l : float, epsilon : float, phi_L : float, phi_R : float):
 
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
@@ -259,6 +261,7 @@ plt.show()
 """
 
 # %%
+results_per_l = []
 for l in [0.5, 1, 2]:
     results = []
     m = 101
@@ -272,6 +275,54 @@ for l in [0.5, 1, 2]:
         results.append(res)
         y = res.sol(x)
     plt.plot(epsilon_arr, [np.apply_along_axis(normDensity, 0, res.sol(l/2)) for res in results], label = f"l = {l}")
+    results_per_l.append(results)
+plt.legend()
+plt.grid()
+plt.show()
+
+# %% [markdown]
+"""
+### 2l
+"""
+
+# %%
+results_for_1 = results_per_l[1]
+
+def j(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
+    gamma, gamma_tilde, omega, omega_tilde = to_2D_matrices(vec)
+
+    I = np.identity(2)
+    N = inv(I - gamma @ gamma_tilde)
+    N_tilde = inv (I - gamma @ gamma_tilde)
+
+    dx_N = N @ (omega @ gamma_tilde + gamma @ omega_tilde) @ N
+    dx_N_tilde = N_tilde @ (omega_tilde @ gamma + gamma_tilde @ omega) @ N_tilde
+    
+    # Forsøkt på å regne ut færre matriser, unnødvendig optimalisering
+    # upper_left_block = (N @ dx_N - N @ gamma @ (N_tilde @ omega_tilde + dx_N_tilde @ gamma_tilde)) - (dx_N @ N - (N @ omega + dx_N @ gamma) @ N_tilde @ gamma_tilde)
+    # lower_right_block = (N_tilde @ gamma_tilde @ (N @ omega + dx_N @ gamma) - (2 * N_tilde - I) @ dx_N) - ((-N_tilde @ omega_tilde - dx_N_tilde @ gamma_tilde) @ N @ gamma + dx_N_tilde @ N_tilde)
+
+    # return 4 * (np.trace(upper_left_block).real - np.trace(lower_right_block).real)
+
+    g = np.block([[2*N-I, 2 * N @gamma], [-2*N_tilde@gamma_tilde, -2*N_tilde+I]])
+    dx_g = 2* np.block([[dx_N, N @omega + dx_N @gamma], [-N_tilde @omega_tilde - dx_N_tilde @ gamma_tilde, -dx_N_tilde]])
+
+    rho = np.asarray([[1,0,0,0],[0,1,0,0],[0,0,-1,0],[0,0,0,-1]])
+
+    return np.trace(rho @ (g @ dx_g - dx_g @ g)).real
+
+
+res_2 = results_for_1[0]
+res_1_5 = results_for_1[25]
+res_1 = results_for_1[50]
+res_0_5 = results_for_1[75]
+res_0 = results_for_1[-1]
+
+x = np.linspace(0, 1, m)
+
+for idx, res in enumerate((res_0, res_0_5, res_1, res_1_5, res_2)):
+    
+    plt.plot(x, np.apply_along_axis(j, 0, res.sol(x)), label = f"epsilon = {idx/2}")
 plt.legend()
 plt.grid()
 plt.show()
