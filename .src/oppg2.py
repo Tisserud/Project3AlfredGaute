@@ -4,6 +4,8 @@ from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 import matplotlib.pyplot as plt
 from tqdm import trange
+
+I = np.identity(2)
 # %% [markdown] 
 """
 ## Oppgave 2
@@ -102,8 +104,8 @@ $$
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
     gamma, gammaTilde, omega, omegaTilde = to_2D_matrices(vec)
 
-    N = inv(np.identity(2) - gamma @ gammaTilde)
-    N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
+    N = inv(I - gamma @ gammaTilde)
+    N_tilde = inv(I - gammaTilde @ gamma)
     
     omegaDeriv = -2j * (epsilon + 0.01j)*gamma - 2 * omega @ N_tilde @ gammaTilde @ omega
     omegaTildeDeriv = -2j * (epsilon + 0.01j)*gammaTilde- 2 * omegaTilde @ N @ gamma @ omegaTilde
@@ -164,9 +166,9 @@ for eps in range(3):
 # %%
 def normDensity(vec : np.ndarray) -> float:
     gamma, gammaTilde, _, _ = to_2D_matrices(vec)
-
-    N = inv(np.identity(2) - gamma @ gammaTilde)
-    N_tilde = inv(np.identity(2) - gammaTilde @ gamma)
+    
+    N = inv(I - gamma @ gammaTilde)
+    N_tilde = inv(I - gammaTilde @ gamma)
 
     return (np.trace(N) + np.trace(N_tilde)).real/2 - 1
 
@@ -210,7 +212,6 @@ def get_bc_superconductor(l : float, epsilon : float, phi_L : float, phi_R : flo
 
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
 
-    I = np.identity(2)
     def bc(
         v_left : np.ndarray,
         v_right : np.ndarray,
@@ -291,7 +292,6 @@ results_for_1 = results_per_l[1]
 def j(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
     gamma, gamma_tilde, omega, omega_tilde = to_2D_matrices(vec)
 
-    I = np.identity(2)
     N = inv(I - gamma @ gamma_tilde)
     N_tilde = inv (I - gamma @ gamma_tilde)
 
