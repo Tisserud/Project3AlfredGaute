@@ -4,6 +4,7 @@ from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 import matplotlib.pyplot as plt
 from tqdm import trange
+from scipy.integrate import simpson
 
 I = np.identity(2)
 # %% [markdown] 
@@ -265,7 +266,7 @@ plt.show()
 results_per_l = []
 for l in [0.5, 1, 2]:
     results = []
-    m = 101
+    m = 51
     x = np.linspace(0,l,m)
     y = np.zeros((32,m))
     epsilon_arr = np.linspace(2, 0, m)
@@ -289,7 +290,7 @@ plt.show()
 # %%
 results_for_1 = results_per_l[1]
 
-def j(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
+def current_density(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
     gamma, gamma_tilde, omega, omega_tilde = to_2D_matrices(vec)
 
     N = inv(I - gamma @ gamma_tilde)
@@ -313,16 +314,16 @@ def j(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
 
 
 res_2 = results_for_1[0]
-res_1_5 = results_for_1[25]
-res_1 = results_for_1[50]
-res_0_5 = results_for_1[75]
+res_1_5 = results_for_1[m//4]
+res_1 = results_for_1[m//2]
+res_0_5 = results_for_1[3*m//4]
 res_0 = results_for_1[-1]
 
 x = np.linspace(0, 1, m)
 
 for idx, res in enumerate((res_0, res_0_5, res_1, res_1_5, res_2)):
     
-    plt.plot(x, np.apply_along_axis(j, 0, res.sol(x)), label = f"epsilon = {idx/2}")
+    plt.plot(x, np.apply_along_axis(current_density, 0, res.sol(x)), label = f"epsilon = {idx/2}")
 plt.legend()
 plt.grid()
 plt.show()
@@ -332,7 +333,7 @@ plt.show()
 """
 # %%
 l = 1
-m = 101
+m = 51
 x = np.linspace(0,l,m)
 y = np.zeros((32,m))
 epsilon_arr = np.linspace(2, 0, m)
@@ -346,11 +347,43 @@ for i in trange(m, desc = f"l = {l}"):
     y = res.sol(x)
 
 # %%
-plt.plot(epsilon_arr, [np.apply_along_axis(j, 0, res.sol(l/2)) for res in results], label = f"l = {l}")
+plt.plot(epsilon_arr, [np.apply_along_axis(current_density, 0, res.sol(l/2)) for res in results], label = f"l = {l}")
 plt.legend()
 plt.grid()
 plt.show()
 # %%
 for idx, res in enumerate(results):
-    plt.plot(x , np.apply_along_axis(j, 0, res.sol(x)), label = f"epsilon = {epsilon_arr[i]}")
+    plt.plot(x , np.apply_along_axis(current_density, 0, res.sol(x)), label = f"epsilon = {epsilon_arr[i]}")
+plt.show()
+
+# %% [markdown]
+"""
+### 2n
+"""
+# %%
+n = 10
+m = 51
+
+l = 1
+x = np.linspace(0,l,m)
+y = np.zeros((32,m))
+
+phi_R = 0
+phi_L_arr = np.linspace(0, 2*np.pi, n)
+epsilon_arr = np.linspace(2, 0, m)
+
+results_per_phi = []
+for i in range(n):
+    results = []
+    for j in trange(m, desc = f"delta_phi = {phi_L_arr[i]}"):
+        res= solve_bvp(get_fun(epsilon_arr[j]), get_bc_superconductor(l, epsilon_arr[j], phi_L_arr[i], phi_R), x, y)
+        results.append(res)
+        y = res.sol(x)
+    results_per_phi.append(results)
+
+# %%
+j_phi = np.array([[np.apply_along_axis(current_density, 0, res.sol(l/2)) for res in results] for results in results_per_phi])
+I_phi = -simpson(j_phi, epsilon_arr)
+
+plt.plot(phi_L_arr, I_phi)
 plt.show()
