@@ -3,6 +3,7 @@ import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
 import matplotlib.pyplot as plt
+from tqdm import trange
 # %% [markdown] 
 """
 ## Oppgave 2
@@ -11,25 +12,13 @@ import matplotlib.pyplot as plt
 """
 # %% [code]
 
-def toRealVector(complexMatrix : np.ndarray[np.ndarray[np.complex128]]) -> np.ndarray[np.float64]:
-    arr = np.zeros(8)
-    rav = np.ravel(complexMatrix, 'C')
-
-    for i in range(4):
-        arr[i] = rav[i].real
-        arr[i + 4] = rav[i].imag
-
-    return arr
+def toRealVector(complexMatrix : np.ndarray[tuple[int,int], np.dtype[np.complex128]]) -> np.ndarray[tuple[int], np.dtype[np.float64]]:
+    return np.concatenate((complexMatrix.real.flatten(), complexMatrix.imag.flatten()))
 
 
 
-def toComplexMatrix(realVector : np.ndarray) -> np.ndarray[np.ndarray[np.complex128]]:
-    matrix =  np.zeros(4, dtype=np.complex128)
-
-    for i in range(4):
-        matrix[i] = realVector[i] + realVector[i +4] * 1j
-
-    return matrix.reshape((2,2))
+def toComplexMatrix(realVector : np.ndarray[tuple[int], np.dtype[np.float64]]) -> np.ndarray[tuple[int, int], np.dtype[np.complex128]]:
+    return (realVector[:4] + realVector[4:] * 1j).reshape((2,2))
 
 
 a = np.array([[1+5j, 2+6j],[3+7j, 4+8j]])
@@ -43,7 +32,7 @@ print(toComplexMatrix(toRealVector(a)))
 ### 2b
 """
 
-def toComponentVectors(vec : np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def toComponentVectors(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     return vec[:8], vec[8:16], vec[16:24], vec[24:32]
 
 
@@ -94,12 +83,7 @@ def to_2D_matrices(
     ]:
 
     m1, m2, m3, m4 = toComponentVectors(vec)
-    gamma = toComplexMatrix(m1)
-    gammaTilde = toComplexMatrix(m2)
-    omega = toComplexMatrix(m3)
-    omegaTilde = toComplexMatrix(m4)
-
-    return gamma, gammaTilde, omega, omegaTilde
+    return toComplexMatrix(m1),toComplexMatrix(m2),toComplexMatrix(m3),toComplexMatrix(m4)
 
 # %% [markdown]
 """
@@ -177,7 +161,7 @@ for eps in range(3):
 ### 2h
 """
 # %%
-def normDensity(vec):
+def normDensity(vec : np.ndarray) -> float:
     gamma, gammaTilde, _, _ = to_2D_matrices(vec)
 
     N = inv(np.identity(2) - gamma @ gammaTilde)
@@ -200,9 +184,7 @@ plt.show()
 ### 2i
 """
 # %%
-
-def get_bc_superconductor(l, epsilon, phi_L, phi_R):
-    def get_ricatti(l, epsilon, phi_L, phi_R):
+def get_ricatti(l, epsilon, phi_L, phi_R):
         def theta(sigma, epsilon):
             return np.atanh(sigma/(epsilon + 0.01j))
         
@@ -222,8 +204,11 @@ def get_bc_superconductor(l, epsilon, phi_L, phi_R):
 
         return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
 
+def get_bc_superconductor(l : float, epsilon : float, phi_L : float, phi_R : float):
+
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
 
+    I = np.identity(2)
     def bc(
         v_left : np.ndarray,
         v_right : np.ndarray,
@@ -232,20 +217,24 @@ def get_bc_superconductor(l, epsilon, phi_L, phi_R):
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
 
-        N_L = inv(np.identity(2) - gamma_L @ gamma_L_tilde)
-        N_L_tilde = inv(np.identity(2) - gamma_L_tilde @ gamma_L)
-        N_R = inv(np.identity(2) - gamma_R @ gamma_R_tilde)
-        N_R_tilde = inv(np.identity(2) - gamma_R_tilde @ gamma_R)
+        N_L = inv(I - gamma_L @ gamma_L_tilde)
+        N_L_tilde = inv(I - gamma_L_tilde @ gamma_L)
+        N_R = inv(I - gamma_R @ gamma_R_tilde)
+        N_R_tilde = inv(I - gamma_R_tilde @ gamma_R)
 
         return to_32_component_vector(
-            omega_left + 1/(3*l) * (np.identity(2) - gamma_left @ gamma_L_tilde) @ N_L @ (gamma_L - gamma_left),
-            omega_left_tilde + 1/(3*l) * (np.identity(2) - gamma_left_tilde @ gamma_L) @ N_L_tilde @ (gamma_L_tilde - gamma_left_tilde),
-            omega_right - 1/(3*l) * (np.identity(2) - gamma_right @ gamma_R_tilde) @ N_R @ (gamma_R - gamma_right),
-            omega_right_tilde - 1/(3*l) * (np.identity(2) - gamma_right_tilde @ gamma_R) @ N_R_tilde @ (gamma_R_tilde - gamma_right_tilde)
+            omega_left + 1/(3*l) * (I - gamma_left @ gamma_L_tilde) @ N_L @ (gamma_L - gamma_left),
+            omega_left_tilde + 1/(3*l) * (I - gamma_left_tilde @ gamma_L) @ N_L_tilde @ (gamma_L_tilde - gamma_left_tilde),
+            omega_right - 1/(3*l) * (I - gamma_right @ gamma_R_tilde) @ N_R @ (gamma_R - gamma_right),
+            omega_right_tilde - 1/(3*l) * (I - gamma_right_tilde @ gamma_R) @ N_R_tilde @ (gamma_R_tilde - gamma_right_tilde)
             )
     
     return bc
 
+# %% [markdown]
+"""
+### 2j
+"""
 # %%
 l = 1
 m = 101
@@ -253,7 +242,7 @@ x = np.linspace(0,l,m)
 y = np.zeros((32,m))
 epsilon = 2
 phi_L = phi_R = 0
-res= solve_bvp(get_fun(epsilon), get_bc_superconductor(l, epsilon, phi_L, phi_R), x, y, verbose = 2)
+res = solve_bvp(get_fun(epsilon), get_bc_superconductor(l, epsilon, phi_L, phi_R), x, y, verbose = 2)
 
 density = np.apply_along_axis(normDensity, 0, res.sol(x))
 plt.plot(x, density, label = f'epsilon = {epsilon}')
@@ -262,4 +251,27 @@ plt.ylabel('d')
 plt.grid()
 plt.title("Superconductor, energy density")
 plt.legend()
+plt.show()
+
+# %% [markdown]
+"""
+### 2k
+"""
+
+# %%
+for l in [0.5, 1, 2]:
+    results = []
+    m = 101
+    x = np.linspace(0,l,m)
+    y = np.zeros((32,m))
+    epsilon_arr = np.linspace(2, 0, m)
+    phi_L = phi_R = 0
+
+    for i in trange(m, desc = f"l = {l}"):
+        res= solve_bvp(get_fun(epsilon_arr[i]), get_bc_superconductor(l, epsilon_arr[i], phi_L, phi_R), x, y)
+        results.append(res)
+        y = res.sol(x)
+    plt.plot(epsilon_arr, [np.apply_along_axis(normDensity, 0, res.sol(l/2)) for res in results], label = f"l = {l}")
+plt.legend()
+plt.grid()
 plt.show()
