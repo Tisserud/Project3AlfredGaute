@@ -326,3 +326,31 @@ for idx, res in enumerate((res_0, res_0_5, res_1, res_1_5, res_2)):
 plt.legend()
 plt.grid()
 plt.show()
+# %% [markdown]
+"""
+### 2m
+"""
+# %%
+l = 1
+m = 101
+x = np.linspace(0,l,m)
+y = np.zeros((32,m))
+epsilon_arr = np.linspace(2, 0, m)
+phi_L = 1
+phi_R = 0
+
+results = []
+for i in trange(m, desc = f"l = {l}"):
+    res= solve_bvp(get_fun(epsilon_arr[i]), get_bc_superconductor(l, epsilon_arr[i], phi_L, phi_R), x, y)
+    results.append(res)
+    y = res.sol(x)
+
+# %%
+plt.plot(epsilon_arr, [np.apply_along_axis(j, 0, res.sol(l/2)) for res in results], label = f"l = {l}")
+plt.legend()
+plt.grid()
+plt.show()
+# %%
+for idx, res in enumerate(results):
+    plt.plot(x , np.apply_along_axis(j, 0, res.sol(x)), label = f"epsilon = {epsilon_arr[i]}")
+plt.show()
