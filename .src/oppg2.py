@@ -162,7 +162,10 @@ def get_fun(epsilon : float) -> callable:
     Returns
     -------
     fun : function calculating derivates compatible with solve_bvp"""
-    def fun(x : np.ndarray, matrix : np.ndarray[tuple[int, int], np.dtype[np.float64]])->:
+    def fun(
+        x : np.ndarray, 
+        matrix : np.ndarray[tuple[int, int], np.dtype[np.float64]]
+        )->np.ndarray[tuple[int, int], np.dtype[np.float64]]:
         """Do derivate of all vectors in matrix, return derivative
 
         Parameters
@@ -187,10 +190,10 @@ def get_bc_normal_metal(l : float) -> callable:
     
     Parameters
     ----------
-        l : the lenght of the interfacing metal.
+    l : the lenght of the interfacing metal.
     Returns
     -------
-        bc : function calculating boundary condition residuals compatible with solve_bvp."""
+    bc : function calculating boundary condition residuals compatible with solve_bvp."""
     def bc(
         v_left : np.ndarray,
         v_right : np.ndarray,
@@ -199,11 +202,11 @@ def get_bc_normal_metal(l : float) -> callable:
         
         Parameters
         ----------
-            v_left : Riccati matricies and their derivates at x = 0
-            v_right : Riccati matrices and their derivates at x = l
+        v_left : Riccati matricies and their derivates at x = 0
+        v_right : Riccati matrices and their derivates at x = l
         Returns
         -------
-            residuals : residuals to optimize."""
+        residuals : residuals to optimize."""
         
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
@@ -236,6 +239,7 @@ for eps in range(3):
 """
 # %%
 def normDensity(vec : np.ndarray) -> float:
+    """Returns the density D/D_0 as function of vectorized Riccati matrices"""
     gamma, gammaTilde, _, _ = to_2D_matrices(vec)
     
     N = inv(I - gamma @ gammaTilde)
@@ -258,7 +262,23 @@ plt.show()
 ### 2i
 """
 # %%
-def get_ricatti(l, epsilon, phi_L, phi_R):
+def get_ricatti(l : float, epsilon : float, phi_L : float, phi_R :float):
+        """Get the riccati matrices at the boundary of the interfacing metal.
+        
+        Paramenters
+        -----------
+        l :             length of the interfacing metal.
+        epsilon :       normalized energy.
+        phi_L :         the phase of the superconducting metal to the left of the interfacing metal.
+        phi_R :         the phase of the superconducting metal to the right of the interfacing metal.
+
+        Returns
+        -------
+        gamma_L :       Riccati gamma matrix for the superconducting metal to the left of the interfacing metal.
+        gamma_L_tilde : Riccati gamma ~ matric for the superconducting metal to the left of the interfacing metal.
+        gamma_R :       Riccati gamma matrix for the superconducting metal to the right of the interfacing metal.
+        gamma_R_tilde : Riccati gamma ~ matrix for the superconducting metal to the right of the interfacing metal.
+        """
         def theta(sigma, epsilon):
             return np.atanh(sigma/(epsilon + 0.01j))
         
@@ -279,14 +299,40 @@ def get_ricatti(l, epsilon, phi_L, phi_R):
         return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
 
 
-def get_bc_superconductor(l : float, epsilon : float, phi_L : float, phi_R : float):
+def get_bc_superconductor(
+        l : float,
+        epsilon : float,
+        phi_L : float,
+        phi_R : float
+        )->callable:
+    """Get bc function for superconductor compatible with solve_bvp with parameters
+    
+    Parameters
+    ----------
+    l :             length of the interfacing metal.
+    epsilon :       normalized energy.
+    phi_L :         the phase of the superconducting metal to the left of the interfacing metal.
+    phi_R :         the phase of the superconducting metal to the right of the interfacing metal.
 
+    Returns
+    -------
+    bc : function calculating boundary condition residuals compatible with solve_bvp."""
+    
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
 
     def bc(
-        v_left : np.ndarray,
-        v_right : np.ndarray,
-        ):
+        v_left : np.ndarray[int, np.dtype[np.float64]],
+        v_right : np.ndarray[int, np.dtype[np.float64]],
+        )->np.ndarray[int, np.dtype[np.float64]]:
+        """Get residuals from left and right boundary conditions
+        
+        Parameters
+        ----------
+        v_left : Riccati matricies and their derivates at x = 0
+        v_right : Riccati matrices and their derivates at x = l
+        Returns
+        -------
+        residuals : residuals to optimize."""
 
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
@@ -361,6 +407,17 @@ plt.show()
 results_for_1 = results_per_l[1]
 
 def current_density(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
+    """Returns current density integrand as function of Riccati matrices.
+    
+    Paramenters
+    -----------
+    vec : (32,) array with Riccati matrices and their derivates at a given position and energy.
+
+    Returns
+    -------
+    curr_density : the current density at given position.
+    """
+
     gamma, gamma_tilde, omega, omega_tilde = to_2D_matrices(vec)
 
     N = inv(I - gamma @ gamma_tilde)
@@ -368,12 +425,6 @@ def current_density(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float
 
     dx_N = N @ (omega @ gamma_tilde + gamma @ omega_tilde) @ N
     dx_N_tilde = N_tilde @ (omega_tilde @ gamma + gamma_tilde @ omega) @ N_tilde
-    
-    # Forsøkt på å regne ut færre matriser, unnødvendig optimalisering
-    # upper_left_block = (N @ dx_N - N @ gamma @ (N_tilde @ omega_tilde + dx_N_tilde @ gamma_tilde)) - (dx_N @ N - (N @ omega + dx_N @ gamma) @ N_tilde @ gamma_tilde)
-    # lower_right_block = (N_tilde @ gamma_tilde @ (N @ omega + dx_N @ gamma) - (2 * N_tilde - I) @ dx_N) - ((-N_tilde @ omega_tilde - dx_N_tilde @ gamma_tilde) @ N @ gamma + dx_N_tilde @ N_tilde)
-
-    # return 4 * (np.trace(upper_left_block).real - np.trace(lower_right_block).real)
 
     g = np.block([[2*N-I, 2 * N @gamma], [-2*N_tilde@gamma_tilde, -2*N_tilde+I]])
     dx_g = 2* np.block([[dx_N, N @omega + dx_N @gamma], [-N_tilde @omega_tilde - dx_N_tilde @ gamma_tilde, -dx_N_tilde]])
