@@ -1,4 +1,4 @@
- # %% {"tags" : ["imports"]}
+# %%
 import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
@@ -15,27 +15,43 @@ I = np.identity(2)
 """
 # %% [code]
 
-def toRealVector(complexMatrix : np.ndarray[tuple[int,int], np.dtype[np.complex128]]) -> np.ndarray[tuple[int], np.dtype[np.float64]]:
+def toRealVector(
+    complexMatrix : np.ndarray[tuple[int,int], np.dtype[np.complex128]]
+    )->np.ndarray[tuple[int], np.dtype[np.float64]]:
+    """Convert complex 2x2 matrix to real 1x8 array, return array."""
+
     return np.concatenate((complexMatrix.real.flatten(), complexMatrix.imag.flatten()))
 
 
 
-def toComplexMatrix(realVector : np.ndarray[tuple[int], np.dtype[np.float64]]) -> np.ndarray[tuple[int, int], np.dtype[np.complex128]]:
-    return (realVector[:4] + realVector[4:] * 1j).reshape((2,2))
+def toComplexMatrix(
+    realVector : np.ndarray[tuple[int], np.dtype[np.float64]]
+    )->np.ndarray[tuple[int, int], np.dtype[np.complex128]]:
+    """Convert real 1x8 vector to complex 2x2 matrix, return matrix."""
+
+    return (realVector[:4]+realVector[4:]*1j).reshape((2,2))
 
 
-a = np.array([[1+5j, 2+6j],[3+7j, 4+8j]])
+def test2a() -> None:
+    """Tests if toRealVector and toComplexMatrix are inverse functions."""
 
-print(toRealVector(a))
-print(toComplexMatrix(toRealVector(a)))
+    for i in range(999):
+        A = np.random.random(8)
+        B = toRealVector(toComplexMatrix(A))
+        assert not np.any(A-B)
+    print("test2a passed")
 
-
+test2a()
 # %% [markdown]
 """
 ### 2b
 """
 
-def toComponentVectors(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def toComponentVectors(
+    vec : np.ndarray[tuple[int], np.dtype[np.float64]]
+    )->tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Split 1x8 array in four arrays, return tuple of the arrays."""
+
     return vec[:8], vec[8:16], vec[16:24], vec[24:32]
 
 
@@ -45,18 +61,17 @@ def toLongVector(
     m3 : np.ndarray,
     m4 : np.ndarray
     ) -> np.ndarray:
+    """Concatenate 4 arrays, return concatenated array"""
 
     return np.concatenate((m1, m2, m3, m4))
 
-a = np.array([1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8])
-
-m1,m2,m3,m4 = toComponentVectors(a)
-b = toLongVector(m1, m2, m3, m4)
-
-print(m1,'\n',m2,'\n',m3,'\n',m4,'\n')
-print(b)
-
-
+def test2b() -> None:
+    """Tests if toLongVector and toComponentVector are inverse."""
+    for i in range(999):
+        A = np.random.random(32)
+        B = toComponentVectors(toLongVector(A))
+        assert not np.any(A - B)
+    print("test2b passed")
 # %% [markdown]
 """
 ### 2c
@@ -64,12 +79,13 @@ print(b)
 
 # %% [code]
 def to_32_component_vector(
-    gamma : np.ndarray[np.ndarray[np.complex128]],
-    gammaTilde : np.ndarray[np.ndarray[np.complex128]],
-    omega : np.ndarray[np.ndarray[np.complex128]],
-    omegaTilde : np.ndarray[np.ndarray[np.complex128]]
-    ) -> np.ndarray[np.float64]:
-    
+    gamma : np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+    gammaTilde : np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+    omega : np.ndarray[tuple[int, int], np.dtype[np.complex128]],
+    omegaTilde : np.ndarray[tuple[int, int], np.dtype[np.complex128]]
+    )->np.ndarray[int, np.dtype[np.float64]]:
+    """Convert 4 complex matrices to real array of length 32."""
+
     return toLongVector(
         toRealVector(gamma),
         toRealVector(gammaTilde),
@@ -84,10 +100,17 @@ def to_2D_matrices(
         np.ndarray[tuple[int, int], np.dtype[np.complex128]],
         np.ndarray[tuple[int, int], np.dtype[np.complex128]]
     ]:
+    """Convert real array of lenght 32 to 4 comples matrices."""
 
     m1, m2, m3, m4 = toComponentVectors(vec)
     return toComplexMatrix(m1),toComplexMatrix(m2),toComplexMatrix(m3),toComplexMatrix(m4)
 
+def test2c():
+    for i in range(999):
+        A = np.random(32)
+        B = to_32_component_vector(toComplexMatrix(A))
+        assert not np.any(A - B)
+    print("test2c passed")
 # %% [markdown]
 """
 $$
@@ -103,6 +126,16 @@ $$
 # %% [code]
 
 def deriv(vec : np.ndarray[np.float64], epsilon : float):
+    """Calculates the derivates of the vectorized Riccati matrices and their derivates.
+    
+    Parameters
+    ----------
+    vec : Real vectorized form of the Riccati matrices with their derivates.
+    epsilon : dimensionless energy $(E - E_F)\Delta$
+    Returns
+    -------
+    dx_vec : the derivative of vec.
+    """
     gamma, gammaTilde, omega, omegaTilde = to_2D_matrices(vec)
 
     N = inv(I - gamma @ gammaTilde)
@@ -120,8 +153,31 @@ def deriv(vec : np.ndarray[np.float64], epsilon : float):
 
 # %% [code]
 def get_fun(epsilon : float) -> callable:
-    def fun(x : np.ndarray, vec : np.ndarray):
-        return np.apply_along_axis(deriv, 0, vec, epsilon)
+    """Returns function compatible with solve_bvp with parameter epsilon.
+    
+    Parameters
+    ----------
+    epsilon : the unitless energy of the system.
+    
+    Returns
+    -------
+    fun : function calculating derivates compatible with solve_bvp"""
+    def fun(
+        x : np.ndarray, 
+        matrix : np.ndarray[tuple[int, int], np.dtype[np.float64]]
+        )->np.ndarray[tuple[int, int], np.dtype[np.float64]]:
+        """Do derivate of all vectors in matrix, return derivative
+
+        Parameters
+        ----------
+        x : argument required by solve_bvp, unused.
+        matrix : (32, m) array containing the Riccati matrices and their derivates at m positions.
+
+        Returns
+        ----------
+        dx_matrix : (32, m) array with the derivates of matrix.
+        """
+        return np.apply_along_axis(deriv, 0, matrix, epsilon)
     return fun
 
 # %% [markdown]
@@ -131,11 +187,28 @@ def get_fun(epsilon : float) -> callable:
 
 # %% [code]
 def get_bc_normal_metal(l : float) -> callable:
+    """Get bc function for normal metal compatible with solve_bvp with parameter l
+    
+    Parameters
+    ----------
+    l : the lenght of the interfacing metal.
+    Returns
+    -------
+    bc : function calculating boundary condition residuals compatible with solve_bvp."""
     def bc(
         v_left : np.ndarray,
         v_right : np.ndarray,
-        ):
-
+        )->np.ndarray[int, np.dtype[np.float64]]:
+        """Get residuals from left and right boundary conditions
+        
+        Parameters
+        ----------
+        v_left : Riccati matricies and their derivates at x = 0
+        v_right : Riccati matrices and their derivates at x = l
+        Returns
+        -------
+        residuals : residuals to optimize."""
+        
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
 
@@ -167,6 +240,7 @@ for eps in range(3):
 """
 # %%
 def normDensity(vec : np.ndarray) -> float:
+    """Returns the density D/D_0 as function of vectorized Riccati matrices"""
     gamma, gammaTilde, _, _ = to_2D_matrices(vec)
     
     N = inv(I - gamma @ gammaTilde)
@@ -189,7 +263,23 @@ plt.show()
 ### 2i
 """
 # %%
-def get_ricatti(l, epsilon, phi_L, phi_R):
+def get_ricatti(l : float, epsilon : float, phi_L : float, phi_R :float):
+        """Get the riccati matrices at the boundary of the interfacing metal.
+        
+        Paramenters
+        -----------
+        l :             length of the interfacing metal.
+        epsilon :       normalized energy.
+        phi_L :         the phase of the superconducting metal to the left of the interfacing metal.
+        phi_R :         the phase of the superconducting metal to the right of the interfacing metal.
+
+        Returns
+        -------
+        gamma_L :       Riccati gamma matrix for the superconducting metal to the left of the interfacing metal.
+        gamma_L_tilde : Riccati gamma ~ matric for the superconducting metal to the left of the interfacing metal.
+        gamma_R :       Riccati gamma matrix for the superconducting metal to the right of the interfacing metal.
+        gamma_R_tilde : Riccati gamma ~ matrix for the superconducting metal to the right of the interfacing metal.
+        """
         def theta(sigma, epsilon):
             return np.atanh(sigma/(epsilon + 0.01j))
         
@@ -210,14 +300,40 @@ def get_ricatti(l, epsilon, phi_L, phi_R):
         return gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde
 
 
-def get_bc_superconductor(l : float, epsilon : float, phi_L : float, phi_R : float):
+def get_bc_superconductor(
+        l : float,
+        epsilon : float,
+        phi_L : float,
+        phi_R : float
+        )->callable:
+    """Get bc function for superconductor compatible with solve_bvp with parameters
+    
+    Parameters
+    ----------
+    l :             length of the interfacing metal.
+    epsilon :       normalized energy.
+    phi_L :         the phase of the superconducting metal to the left of the interfacing metal.
+    phi_R :         the phase of the superconducting metal to the right of the interfacing metal.
 
+    Returns
+    -------
+    bc : function calculating boundary condition residuals compatible with solve_bvp."""
+    
     gamma_L, gamma_L_tilde, gamma_R, gamma_R_tilde = get_ricatti(l, epsilon, phi_L, phi_R)
 
     def bc(
-        v_left : np.ndarray,
-        v_right : np.ndarray,
-        ):
+        v_left : np.ndarray[int, np.dtype[np.float64]],
+        v_right : np.ndarray[int, np.dtype[np.float64]],
+        )->np.ndarray[int, np.dtype[np.float64]]:
+        """Get residuals from left and right boundary conditions
+        
+        Parameters
+        ----------
+        v_left : Riccati matricies and their derivates at x = 0
+        v_right : Riccati matrices and their derivates at x = l
+        Returns
+        -------
+        residuals : residuals to optimize."""
 
         gamma_left, gamma_left_tilde, omega_left, omega_left_tilde = to_2D_matrices(v_left)
         gamma_right, gamma_right_tilde, omega_right, omega_right_tilde = to_2D_matrices(v_right)
@@ -292,6 +408,17 @@ plt.show()
 results_for_1 = results_per_l[1]
 
 def current_density(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float:
+    """Returns current density integrand as function of Riccati matrices.
+    
+    Paramenters
+    -----------
+    vec : (32,) array with Riccati matrices and their derivates at a given position and energy.
+
+    Returns
+    -------
+    curr_density : the current density at given position.
+    """
+
     gamma, gamma_tilde, omega, omega_tilde = to_2D_matrices(vec)
 
     N = inv(I - gamma @ gamma_tilde)
@@ -299,12 +426,6 @@ def current_density(vec : np.ndarray[tuple[int], np.dtype[np.float64]]) -> float
 
     dx_N = N @ (omega @ gamma_tilde + gamma @ omega_tilde) @ N
     dx_N_tilde = N_tilde @ (omega_tilde @ gamma + gamma_tilde @ omega) @ N_tilde
-    
-    # Forsøkt på å regne ut færre matriser, unnødvendig optimalisering
-    # upper_left_block = (N @ dx_N - N @ gamma @ (N_tilde @ omega_tilde + dx_N_tilde @ gamma_tilde)) - (dx_N @ N - (N @ omega + dx_N @ gamma) @ N_tilde @ gamma_tilde)
-    # lower_right_block = (N_tilde @ gamma_tilde @ (N @ omega + dx_N @ gamma) - (2 * N_tilde - I) @ dx_N) - ((-N_tilde @ omega_tilde - dx_N_tilde @ gamma_tilde) @ N @ gamma + dx_N_tilde @ N_tilde)
-
-    # return 4 * (np.trace(upper_left_block).real - np.trace(lower_right_block).real)
 
     g = np.block([[2*N-I, 2 * N @gamma], [-2*N_tilde@gamma_tilde, -2*N_tilde+I]])
     dx_g = 2* np.block([[dx_N, N @omega + dx_N @gamma], [-N_tilde @omega_tilde - dx_N_tilde @ gamma_tilde, -dx_N_tilde]])
