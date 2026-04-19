@@ -1,4 +1,4 @@
-# %% {"tags" : ["imports"]}
+ # %% {"tags" : ["imports"]}
 import numpy as np
 from numpy.linalg import inv
 from scipy.integrate import solve_bvp
@@ -123,6 +123,7 @@ def get_fun(epsilon : float) -> callable:
     def fun(x : np.ndarray, vec : np.ndarray):
         return np.apply_along_axis(deriv, 0, vec, epsilon)
     return fun
+
 # %% [markdown]
 """
 ### 2f
@@ -383,7 +384,7 @@ for i in range(n):
 
 # %%
 j_phi = np.array([[np.apply_along_axis(current_density, 0, res.sol(l/2)) for res in results] for results in results_per_phi])
-I_phi = -simpson(j_phi, epsilon_arr)
+I_phi = simpson(j_phi, epsilon_arr)
 
 plt.plot(phi_L_arr, I_phi)
 plt.show()

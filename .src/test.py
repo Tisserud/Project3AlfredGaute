@@ -110,4 +110,4 @@ plt.yscale("log")
 
 plt.figure("Iterations/alphas")
 plt.plot(alphas, Iterations)
-
+plt.show()
